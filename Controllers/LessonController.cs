@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using lessonApi.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Net;
 
 namespace lessonApi.Controllers
 {
@@ -13,8 +15,6 @@ namespace lessonApi.Controllers
     [Route("api/[controller]")]
     public class LessonController : ControllerBase
     {
-        //private readonly List<Lesson> Lessons = new (); // todo later - serialise from file/db
-
         private readonly LessonContext db;
 
         public LessonController(LessonContext context)
@@ -30,13 +30,22 @@ namespace lessonApi.Controllers
         }
 
         [HttpGet]
-        public async Task<IEnumerable<Lesson>> GetAll() => await db.Lessons.ToListAsync();
-
+        public async Task<IEnumerable<Lesson>> GetAll(CancellationToken token) 
+          { 
+            // try
+            // {
+                return await db.Lessons.ToListAsync(token);
+            // }
+            // catch (TaskCanceledException tokenException)
+            // {
+            //    throw;
+            // }
+          }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<IEnumerable<Lesson>>> GetById(long id)
+        public async Task<ActionResult<IEnumerable<Lesson>>> GetById(long id, CancellationToken token)
         {
-            var Lesson = await db.Lessons.FindAsync(id);
+            var Lesson = await db.Lessons.FindAsync(id, token);
             
             if ( Lesson == null )
                 return NotFound();
@@ -46,28 +55,28 @@ namespace lessonApi.Controllers
 
         //POST  Add newLesson to repository
         [HttpPost]
-        public async Task<ActionResult<Lesson>> CreateLesson(Lesson lesson)
+        public async Task<ActionResult<Lesson>> CreateLesson(Lesson lesson, CancellationToken token)
         {
             db.Lessons.Add(lesson);
-            await db.SaveChangesAsync();
+            await db.SaveChangesAsync(token);
             
             return CreatedAtAction(nameof(lesson), new { id = lesson.Id }, lesson );  
         }
 
         //PUT
         [HttpPut("{id")]
-        public async Task<ActionResult<Lesson>> Put(Lesson lesson)
+        public async Task<ActionResult<Lesson>> Put(Lesson lesson, CancellationToken token)
         {
 
             db.Entry(lesson).State = EntityState.Modified;
-            await db.SaveChangesAsync();
+            await db.SaveChangesAsync(token);
 
             return Ok (lesson);
         }
 
         //DELETE
         [HttpDelete("{id}")]
-        public async Task<ActionResult<Lesson>> Delete(long item)
+        public async Task<ActionResult<Lesson>> Delete(long item, CancellationToken token)
         {
             var lesson = db.Lessons.FirstOrDefault(x => x.Id == item);
             
@@ -75,7 +84,7 @@ namespace lessonApi.Controllers
 
             db.Lessons.Remove(lesson);
 
-            await db.SaveChangesAsync();
+            await db.SaveChangesAsync(token);
 
             return Ok();
         }
